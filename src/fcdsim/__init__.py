@@ -44,7 +44,11 @@ class FCDBase(object):
 
     def __str__(self):
         # Precision of Decimal expressed degrees, see: https://en.wikipedia.org/wiki/Decimal_degrees
-        return '{},{:.2f},{},{:.8f},{:.8f}'.format(self.id, self.speed, self.timestamp, self.longitude, self.latitude)
+        return '{},{:.2f},{},{:.8f},{:.8f}'.format(self.id,
+                                                   self.speed,
+                                                   self.timestamp,
+                                                   self.longitude,
+                                                   self.latitude,)
 
 
 class TaxiFCD(FCDBase):
