@@ -10,6 +10,9 @@ arg_parser.add_argument('port',
                         metavar='PORT',
                         type=int,
                         help='TCP port to send the simulated Floating Car Data to')
+arg_parser.add_argument('-b', '--base-fcd-only',
+                        action='store_true',
+                        help='Only send base FCD to host.')
 arg_parser.add_argument('-r', '--requests-per-second',
                         type=int,
                         default=100,
