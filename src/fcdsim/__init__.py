@@ -27,6 +27,12 @@ arg_parser.add_argument('-f', '--faulty-data-per-second',
 
 
 class FCDBase(object):
+    """
+
+    """
+
+    DEFAULT_CHOICES = [1, 1, 1, 1, 3, 5, ]
+
     def __init__(self):
         self.id = None
         self.speed = None
@@ -35,65 +41,95 @@ class FCDBase(object):
         self.latitude = None
 
     def generate(self):
-        self.id = random.randint(1, 999999)
-        self.speed = random.uniform(0., 250.)
-        self.timestamp = datetime.now().replace(microsecond=0)
+        """
+
+        :return:
+        """
+        self.id = str(random.randint(1, 999999))
+        self.speed = '{:.2f}'.format(random.uniform(0., 350.))
+        self.timestamp = str(datetime.now().replace(microsecond=0))
         # Coordinates located worldwide
-        # self.longitude = random.uniform(-180., 180.)
-        # self.latitude = random.uniform(-90., 90.)
+        # self.longitude = '{:.8f}'.format(random.uniform(-180., 180.))
+        # self.latitude = '{:.8f}'.format(random.uniform(-90., 90.))
         # Coordinates located in Germany (more or less)
-        self.longitude = random.uniform(6., 15.)
-        self.latitude = random.uniform(47., 55.)
+        self.longitude = '{:.8f}'.format(random.uniform(6., 15.))
+        self.latitude = '{:.8f}'.format(random.uniform(47., 55.))
+
+    def generate_errors(self, choices=DEFAULT_CHOICES):
+        """
+
+        :param choices:
+        :return:
+        """
+        number_of_errors = random.choice(choices)
+        counter = 0
+        # we do not want to alter the id so remove it
+        fields = self.__dict__.copy()
+        del fields['id']
+        while counter < number_of_errors:
+            error_key = random.choice(fields.keys())
+            # if 'speed' is chosen, alter it to a irrational high number in most cases (chance: 2/3)
+            if error_key == 'speed' and random.choice([True, True, False]):
+                self.speed = '{:.2f}'.format(random.uniform(350., 800.))
+            # in every other case simply remove the value
+            else:
+                self.__dict__[error_key] = ''
+            counter += 1
 
     def __str__(self):
         # Precision of Decimal expressed degrees, see: https://en.wikipedia.org/wiki/Decimal_degrees
-        return '{},{:.2f},{},{:.8f},{:.8f}'.format(self.id,
-                                                   self.speed,
-                                                   self.timestamp,
-                                                   self.longitude,
-                                                   self.latitude,)
+        return ','.join([self.id,
+                         self.speed,
+                         self.timestamp,
+                         self.longitude,
+                         self.latitude])
 
 
 class TaxiFCD(FCDBase):
+    """
+
+    """
+
+    DEFAULT_CHOICES = [1, 1, 1, 1, 1, 1, 3, 5, 7, ]
 
     def __init__(self):
         super(TaxiFCD, self).__init__()
         self.taxi_id = None
-        self.states = {
-            'waiting': None,
-            'busy': None,
-            'gps': None,
-        }
+        self.waiting_state = None
+        self.busy_state = None
+        self.gps_state = None
         self.degree = None
 
     def generate(self):
         super(TaxiFCD, self).generate()
-        self.taxi_id = random.randint(1, 999999)
-        self.states['waiting'] = random.choice([0, 1])
-        self.states['busy'] = random.choice([0, 1])
-        self.states['gps'] = random.choice([0, 1])
-        self.degree = random.uniform(0, 360)
+        self.taxi_id = str(random.randint(1, 999999))
+        self.waiting_state = str(random.choice([0, 1]))
+        self.busy_state = str(random.choice([0, 1]))
+        self.gps_state = str(random.choice([0, 1]))
+        self.degree = '{:.0f}'.format(random.uniform(0, 360))
+
+    def generate_errors(self, choices=DEFAULT_CHOICES):
+        super(TaxiFCD, self).generate_errors(choices)
 
     def __str__(self):
-        return '{},{},{},{:.8f},{:.8f},{},{},{},{:.2f},{}'.format(self.id,
-                                                                  self.taxi_id,
-                                                                  self.timestamp,
-                                                                  self.longitude,
-                                                                  self.latitude,
-                                                                  self.states['waiting'],
-                                                                  self.states['busy'],
-                                                                  self.degree,
-                                                                  self.speed,
-                                                                  self.states['gps'],)
+        return ','.join([self.id,
+                         self.taxi_id,
+                         self.timestamp,
+                         self.longitude,
+                         self.latitude,
+                         self.waiting_state,
+                         self.busy_state,
+                         self.degree,
+                         self.speed,
+                         self.gps_state, ])
 
 
 def __main__():
+    args = arg_parser.parse_args()
+    print(args)
     # TODO remove or reuse this in later stages. for testing only at the moment.
-    base_fcd = FCDBase()
-    base_fcd.generate()
-    print(base_fcd)
     taxi_fcd = TaxiFCD()
     taxi_fcd.generate()
+    taxi_fcd.generate_errors([1])
     print(taxi_fcd)
     # TODO create and send FCD to host
-    # args = arg_parser.parse_args()
