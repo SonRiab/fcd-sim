@@ -1,6 +1,9 @@
 import argparse
 import random
+import socket
+from sys import exit, maxsize
 from datetime import datetime
+from time import sleep
 
 arg_parser = argparse.ArgumentParser(prog=u'fcdsim')
 arg_parser.add_argument('host',
@@ -129,10 +132,60 @@ class TaxiFCD(FCDBase):
 
 def __main__():
     args = arg_parser.parse_args()
-    print(args)
-    # TODO remove or reuse this in later stages. for testing only at the moment.
-    taxi_fcd = TaxiFCD()
-    taxi_fcd.generate()
-    taxi_fcd.generate_errors([1])
-    print(taxi_fcd)
-    # TODO create and send FCD to host
+
+    spark_socket = None
+    try:
+        spark_socket = socket.create_connection((args.host, args.port))
+    except OSError, e:
+        print(e.strerror)
+        exit(1)
+    # deprecated, see https://docs.python.org/3.6/library/socket.html#socket.error
+    except socket.error, e:
+        print(e.strerror)
+        exit(1)
+
+    rps = args.requests_per_second
+    if rps > 10000:
+        rps = 10000
+    tick = 1. / rps * 0.725
+    fps = args.faulty_data_per_second
+    if fps > rps:
+        fps = rps
+    mod = rps / fps if fps > 0 else rps
+    sleeping = 0
+    counter = 0
+    fcd = TaxiFCD()
+
+    print('Sending {} requests per second to {}:{}. Use CMD+c to stop the program.'.format(rps, args.host, args.port))
+    program_start = datetime.now()
+    try:
+        while True:
+            if counter == maxsize:
+                counter = 0
+            start = datetime.now()
+            fcd.generate()
+            if not counter % mod:
+                fcd.generate_errors([1])
+            if args.base_fcd_only or random.choice([True, False, False, False]):
+                spark_socket.send(fcd.get_base_str())
+            else:
+                spark_socket.send(str(fcd))
+            spark_socket.send('\n')
+            sleeping += tick - (datetime.now() - start).total_seconds()
+            if sleeping > 0:
+                sleep(sleeping)
+                sleeping = 0.
+            counter += 1
+    except OSError, e:
+        print(e.strerror)
+        exit(1)
+    # deprecated, see https://docs.python.org/3.6/library/socket.html#socket.error
+    except socket.error, e:
+        print(e.strerror)
+        exit(1)
+    except KeyboardInterrupt:
+        program_runtime = (datetime.now() - program_start).total_seconds()
+        print('\n{} requests send in {}s (~{:.0f} requests per second)'.format(counter,
+                                                                               program_runtime,
+                                                                               counter/program_runtime))
+    exit(0)
