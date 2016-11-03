@@ -111,6 +111,9 @@ class TaxiFCD(FCDBase):
     def generate_errors(self, choices=DEFAULT_CHOICES):
         super(TaxiFCD, self).generate_errors(choices)
 
+    def get_base_str(self):
+        return super(TaxiFCD, self).__str__()
+
     def __str__(self):
         return ','.join([self.id,
                          self.taxi_id,
