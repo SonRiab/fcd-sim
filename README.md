@@ -11,7 +11,7 @@ pip install fcdsim
 ## Usage
 
 ```
-usage: fcdsim [-h] [-r NUM_REQUESTS] [-f NUM_FAULTY] HOST PORT
+usage: fcdsim [-h] [-b] [-r NUM_REQUESTS] [-f NUM_FAULTY] HOST PORT
 
 positional arguments:
   HOST                  Host to send the simulated Floating Car Data to
@@ -19,11 +19,12 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -b, --base-fcd-only   Only send base FCD to host.
   -r NUM_REQUESTS, --requests-per-second NUM_REQUESTS
                         The overall number of requests per second to send to
                         the host. Default: 100
   -f NUM_FAULTY, --faulty-data-per-second NUM_FAULTY
-                        The number of requests per second, which contains
-                        faulty Floating Car Data. This is limited by the
-                        overall number of requests allowed. Default: 10
+                        The maximum number of requests per second, which
+                        contains faulty Floating Car Data. This is limited by
+                        the overall number of requests allowed. Default: 10
 ```
