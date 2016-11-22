@@ -4,6 +4,7 @@ import socket
 from sys import exit, maxsize
 from datetime import datetime
 from time import sleep
+from kafka import KafkaProducer
 
 arg_parser = argparse.ArgumentParser(prog=u'fcdsim')
 arg_parser.add_argument('host',
@@ -133,6 +134,8 @@ class TaxiFCD(FCDBase):
 
 class FCDSimulator(object):
 
+    KAFKA_TOPIC = 'fcd'
+
     def __init__(self):
         args = arg_parser.parse_args()
         self.host = args.host
@@ -146,7 +149,7 @@ class FCDSimulator(object):
         self.base_only = args.base_fcd_only
 
     def run(self):
-        spark_socket = None
+        producer = None
         tick = 1. / self.rps * 0.725
         mod = self.rps / self.fps if self.fps > 0 else self.rps
         sleeping = 0
@@ -154,7 +157,8 @@ class FCDSimulator(object):
         fcd = TaxiFCD()
 
         try:
-            spark_socket = socket.create_connection((self.host, self.port))
+            server = self.host + ':' + str(self.port)
+            producer = KafkaProducer(bootstrap_servers=server, value_serializer=str.encode)
         except OSError, e:
             print(e.strerror)
             exit(1)
@@ -176,10 +180,10 @@ class FCDSimulator(object):
                 if not counter % mod:
                     fcd.generate_errors([1])
                 if self.base_only or random.choice([True, False, False, False]):
-                    spark_socket.send(fcd.get_base_str())
+                    producer.send(self.KAFKA_TOPIC, fcd.get_base_str())
                 else:
-                    spark_socket.send(str(fcd))
-                spark_socket.send('\n')
+                    producer.send(self.KAFKA_TOPIC, str(fcd))
+                # producer.send('\n')
                 sleeping += tick - (datetime.now() - start).total_seconds()
                 if sleeping > 0:
                     sleep(sleeping)
@@ -193,10 +197,12 @@ class FCDSimulator(object):
             print(e.strerror)
             exit(1)
         except KeyboardInterrupt:
+            producer.flush()
             program_runtime = (datetime.now() - program_start).total_seconds()
             print('\n{} requests send in {}s (~{:.0f} requests per second)'.format(counter,
                                                                                    program_runtime,
                                                                                    counter/program_runtime))
+        producer.close()
         exit(0)
 
 
