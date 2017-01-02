@@ -75,6 +75,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         'argparse>=1.4.0',
+        'kafka=1.3.1',
     ],
 
     # List additional groups of dependencies here (e.g. development
