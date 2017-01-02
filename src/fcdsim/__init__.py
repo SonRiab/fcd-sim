@@ -14,6 +14,9 @@ arg_parser.add_argument('port',
                         metavar='PORT',
                         type=int,
                         help='TCP port to send the simulated Floating Car Data to')
+arg_parser.add_argument('topic',
+                        metavar='TOPIC',
+                        help='Kafka topic to send the simulated Floating Car Data to')
 arg_parser.add_argument('-b', '--base-fcd-only',
                         action='store_true',
                         help='Only send base FCD to host.')
@@ -82,7 +85,6 @@ class FCDBase(object):
             counter += 1
 
     def __str__(self):
-        # Precision of Decimal expressed degrees, see: https://en.wikipedia.org/wiki/Decimal_degrees
         return ','.join([self.id,
                          self.speed,
                          self.timestamp,
@@ -92,7 +94,31 @@ class FCDBase(object):
 
 class TaxiFCD(FCDBase):
     """
+    @startuml
+    class FCDBase {
+        id,
+        speed
+        timestamp
+        longitude
+        latitude
+        generate():void
+        generate_errors(choices=DEFAULT_CHOICES):void
+        __str__():string
+    }
+    class TaxiFCD {
+        taxi_id
+        waiting_state
+        busy_state
+        gps_state
+        degree
+        generate():void
+        generate_errors(choices=DEFAULT_CHOICES):void
+        get_base_str():string
+        __str__():string
+    }
 
+    FCDBase <|-right- TaxiFCD
+    @end
     """
 
     DEFAULT_CHOICES = [1, 1, 1, 1, 1, 1, 3, 5, 7, ]
@@ -134,12 +160,11 @@ class TaxiFCD(FCDBase):
 
 class FCDSimulator(object):
 
-    KAFKA_TOPIC = 'fcd'
-
     def __init__(self):
         args = arg_parser.parse_args()
         self.host = args.host
         self.port = args.port
+        self.topic = args.topic
         self.rps = args.requests_per_second
         if self.rps > 10000:
             self.rps = 10000
@@ -167,9 +192,10 @@ class FCDSimulator(object):
             print(e.strerror)
             exit(1)
 
-        print('Sending {} requests per second to {}:{}. Use CMD+c to stop the program.'.format(self.rps,
-                                                                                               self.host,
-                                                                                               self.port))
+        print('Sending {} requests per second to {}:{}/{}. Use Ctrl-C to stop the program.'.format(self.rps,
+                                                                                                   self.host,
+                                                                                                   self.port,
+                                                                                                   self.topic))
         program_start = datetime.now()
         try:
             while True:
@@ -178,11 +204,11 @@ class FCDSimulator(object):
                 start = datetime.now()
                 fcd.generate()
                 if not counter % mod:
-                    fcd.generate_errors([1])
+                    fcd.generate_errors()
                 if self.base_only or random.choice([True, False, False, False]):
-                    producer.send(self.KAFKA_TOPIC, fcd.get_base_str())
+                    producer.send(self.topic, fcd.get_base_str())
                 else:
-                    producer.send(self.KAFKA_TOPIC, str(fcd))
+                    producer.send(self.topic, str(fcd))
                 # producer.send('\n')
                 sleeping += tick - (datetime.now() - start).total_seconds()
                 if sleeping > 0:
@@ -199,7 +225,7 @@ class FCDSimulator(object):
         except KeyboardInterrupt:
             producer.flush()
             program_runtime = (datetime.now() - program_start).total_seconds()
-            print('\n{} requests send in {}s (~{:.0f} requests per second)'.format(counter,
+            print('\n{} requests send in {}s (~{:.0f} requests per second)'.format(counter+1,
                                                                                    program_runtime,
                                                                                    counter/program_runtime))
         producer.close()
